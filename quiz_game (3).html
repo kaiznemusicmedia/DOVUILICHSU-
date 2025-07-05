@@ -1,0 +1,226 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Đố Vui Lịch Sử</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #1b1b1b;
+      color: #fff;
+      text-align: center;
+      padding: 30px;
+    }
+    .box {
+      max-width: 700px;
+      margin: auto;
+      background-color: #2c2c2c;
+      padding: 20px;
+      border-radius: 12px;
+    }
+    h1, h2, h3 {
+      color: #ffd600;
+    }
+    pre {
+      white-space: pre-wrap;
+      text-align: left;
+      line-height: 1.6;
+      font-size: 16px;
+    }
+    button, input {
+      padding: 10px;
+      margin: 10px 5px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+    }
+    button {
+      background-color: #fbc02d;
+      color: #000;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #fff176;
+    }
+    #result {
+      font-weight: bold;
+      margin: 15px 0;
+    }
+    #score {
+      margin: 20px 0;
+      font-size: 18px;
+      color: #00e5ff;
+    }
+    #leaderboard {
+      background-color: #333;
+      padding: 15px;
+      border-radius: 10px;
+      margin-top: 40px;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+
+<div style="margin-bottom: 30px;">
+  <h1>CHÀO MỪNG BẠN ĐÃ ĐẾN VỚI TRÒ CHƠI "ĐỐ VUI LỊCH SỬ"</h1>
+  <p style="color: #ccc; font-size: 16px; font-style: italic;">
+    Trò chơi được thực hiện bởi <strong>ADMIN DUY KHANG (KAIZNE)</strong>
+  </p>
+</div>
+
+<audio id="bgm" src="vietnam_oi.mp3" loop></audio>
+<audio id="correctSound" src="correct.mp3"></audio>
+<audio id="wrongSound" src="wrong.mp3"></audio>
+<audio id="victorySound" src="victory.mp3"></audio>
+
+<div id="login-box" class="box">
+  <h2>🎓 Đố Vui Lịch Sử</h2>
+  <p>Nhập tên để bắt đầu:</p>
+  <input type="text" id="playerName" placeholder="Tên bạn..." />
+  <button onclick="startGame()">Bắt đầu chơi</button>
+</div>
+
+<div id="game-box" class="box" style="display: none;">
+  <h3 id="greeting">Xin chào!</h3>
+  <pre id="question">Câu hỏi...</pre>
+  <div id="answers"></div>
+  <div id="result"></div>
+  <div id="score">Điểm: 0</div>
+</div>
+
+<div id="leaderboard" style="display: none;">
+  <h3>🏆 Bảng xếp hạng</h3>
+  <div id="scores-list">Đang tải...</div>
+</div>
+
+<script>
+const questions = [
+  { poem: "Câu 1: Vũ Quang ai đã phất cờ\nBình Tây sát tả, bây giờ nhớ ai.", answers: ["Nguyễn Tri Phương", "Trương Công Định", "Phan Đình Phùng & Trương Công Định", "Nguyễn Thái Học"], correct: 2 },
+  { poem: "Câu 2: Vua nào tám tuổi lên ngôi\nDẫu còn nhỏ bé mà người thông minh\nNgai vàng hư vị nào vinh,\nVì dân trốn khỏi hoàng thành giữa đêm.", answers: ["Gia Long", "Minh Mạng", "Duy Tân", "Bảo Đại"], correct: 2 },
+  { poem: "Câu 3: Từ bẩy tuổi đã lên ngôi\nViệc dân, việc nước trọn đời lo toan\nMở trường thi, chọn văn quan\nLập Quốc Tử Giám luyện hàng danh nhân.", answers: ["Lý Thánh Tông", "Lý Nhân Tông", "Trần Nhân Tông", "Lê Thánh Tông"], correct: 1 },
+  { poem: "Câu 4: Đố ai đan sọt giữa đàng\nGiáo đâm thủng vế rõ ràng không hay.", answers: ["Nguyễn Trãi", "Phạm Ngũ Lão", "Trần Hưng Đạo", "Lê Lai"], correct: 1 }
+];
+
+let current = 0;
+let score = 0;
+let playerName = "";
+let isBgmPlaying = true;
+
+function startGame() {
+  const nameInput = document.getElementById("playerName").value.trim();
+  const regex = /^[a-zA-Z0-9!₫]+$/;
+
+  if (!nameInput) {
+    alert("Vui lòng nhập tên để bắt đầu!");
+    return;
+  }
+  if (!regex.test(nameInput)) {
+    alert("Tên chỉ được dùng: a-z, A-Z, 0-9, !, ₫");
+    return;
+  }
+
+  playerName = nameInput;
+  document.getElementById("login-box").style.display = "none";
+  document.getElementById("game-box").style.display = "block";
+  document.getElementById("leaderboard").style.display = "block";
+  document.getElementById("greeting").textContent = `Chào ${playerName} 👋`;
+
+  const bgm = document.getElementById("bgm");
+  bgm.volume = 0.2;
+  bgm.play().catch(e => console.log(e));
+
+  loadQuestion();
+  showLeaderboard();
+}
+
+function loadQuestion() {
+  const q = questions[current];
+  document.getElementById("question").textContent = q.poem;
+  const answersBox = document.getElementById("answers");
+  answersBox.innerHTML = "";
+  document.getElementById("result").textContent = "";
+
+  q.answers.forEach((ans, i) => {
+    const btn = document.createElement("button");
+    btn.textContent = ans;
+    btn.onclick = () => checkAnswer(i);
+    answersBox.appendChild(btn);
+  });
+}
+
+function checkAnswer(selected) {
+  const q = questions[current];
+  const result = document.getElementById("result");
+  if (selected === q.correct) {
+    document.getElementById("correctSound").volume = 0.4;
+    document.getElementById("correctSound").play();
+    result.textContent = "✅ Chính xác!";
+    result.style.color = "#00e676";
+    score++;
+    document.getElementById("score").textContent = `Điểm: ${score}`;
+    setTimeout(() => {
+      current++;
+      if (current < questions.length) {
+        loadQuestion();
+      } else {
+        showFinal();
+      }
+    }, 1000);
+  } else {
+    document.getElementById("wrongSound").volume = 0.4;
+    document.getElementById("wrongSound").play();
+    result.textContent = "❌ Sai rồi! Trò chơi sẽ bắt đầu lại...";
+    result.style.color = "#ff5252";
+    setTimeout(() => {
+      restartGame();
+    }, 1500);
+  }
+}
+
+function restartGame() {
+  score = 0;
+  current = 0;
+  shuffleQuestions();
+  document.getElementById("score").textContent = "Điểm: 0";
+  loadQuestion();
+}
+
+function shuffleQuestions() {
+  questions.sort(() => Math.random() - 0.5);
+}
+
+function showFinal() {
+  document.getElementById("question").textContent = "🎉 Bạn đã hoàn thành!";
+  document.getElementById("answers").innerHTML = "";
+  document.getElementById("result").innerHTML = `✅ ${playerName}, bạn đạt ${score}/${questions.length} điểm!`;
+  document.getElementById("victorySound").volume = 0.5;
+  document.getElementById("victorySound").play();
+  saveScore();
+}
+
+function saveScore() {
+  const scores = JSON.parse(localStorage.getItem("leaderboard") || "[]");
+  scores.push({ name: playerName, score });
+  scores.sort((a, b) => b.score - a.score);
+  localStorage.setItem("leaderboard", JSON.stringify(scores));
+  showLeaderboard();
+}
+
+function showLeaderboard() {
+  const scores = JSON.parse(localStorage.getItem("leaderboard") || "[]");
+  const top = scores.slice(0, 5);
+  document.getElementById("scores-list").innerHTML = top.map(s => `<div>${s.name}: ${s.score}</div>`).join("");
+}
+</script>
+
+<footer style="margin-top: 50px; color: #888; font-size: 14px;">
+  © 2025 - Bản quyền thuộc về <strong>KAIZNE – Duy Khang</strong>
+</footer>
+
+</body>
+</html>
